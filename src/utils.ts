@@ -1,0 +1,175 @@
+// src/utils.ts
+
+export async function getFingerprint() {
+  const nav = window.navigator as any;
+  return {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    languages: navigator.languages.join(', '),
+    platform: nav.platform,
+    hardwareConcurrency: navigator.hardwareConcurrency || 'Unknown',
+    deviceMemory: nav.deviceMemory ? `${nav.deviceMemory} GB` : 'Unknown',
+    screenResolution: `${window.screen.width}x${window.screen.height}`,
+    colorDepth: window.screen.colorDepth,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    cookiesEnabled: navigator.cookieEnabled,
+    online: navigator.onLine,
+  };
+}
+
+export async function getLocation(): Promise<{ lat: number, lon: number, countryCode?: string, country?: string }> {
+  const geoRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
+  if (!geoRes.ok) throw new Error('Failed to fetch from GeoJS API');
+
+  const geoData = await geoRes.json();
+  const countryCode = geoData.country_code;
+  const country = geoData.country;
+  const lat = geoData.latitude ? parseFloat(geoData.latitude) : null;
+  const lon = geoData.longitude ? parseFloat(geoData.longitude) : null;
+
+  if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
+    return { lat, lon, countryCode, country };
+  }
+
+  // Fallback: Fetch coordinates using restcountries API by country code
+  if (countryCode) {
+    const countryRes = await fetch(`https://restcountries.com/v3.1/alpha/${countryCode}`);
+    const countryInfo = await countryRes.json();
+    const coords = countryInfo[0].capitalInfo?.latlng || countryInfo[0].latlng || [0, 0];
+    const countryName = countryInfo[0].name?.common || countryCode;
+    return { lat: coords[0], lon: coords[1], countryCode, country: countryName };
+  }
+
+  throw new Error('Could not determine location from GeoJS API');
+}
+
+export async function getWeather(lat: number, lon: number) {
+  // Using Open-Meteo API which is free and doesn't require an API key
+  const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+  if (!res.ok) throw new Error('Failed to fetch weather');
+  const data = await res.json();
+  return data.current_weather;
+}
+
+export async function getGreeting(country: string) {
+  try {
+    const res = await fetch(`https://raw.githubusercontent.com/novellac/multilanguage-hello-json/master/hello.json`);
+    if (res.ok) {
+      const data = await res.json();
+      const match = Object.values(data).find((v: any) => v.country === country);
+      if (match && (match as any).hello) {
+        return (match as any).hello;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch greeting from multilanguage-hello-json", err);
+  }
+  return 'Hello';
+}
+
+export async function getCommonNames(countryCode: string) {
+  let maleName = 'John';
+  let femaleName = 'Jane';
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/sigpwned/popular-names-by-country-dataset/master/common-forenames-by-country.csv');
+    if (res.ok) {
+      const text = await res.text();
+      const lines = text.split('\n');
+      let foundM = false;
+      let foundF = false;
+
+      for (const line of lines) {
+        if (line.startsWith(countryCode + ',')) {
+          const parts = line.split(',');
+          if (parts.length >= 12) {
+            const index = parts[7];
+            const gender = parts[9];
+            const name = parts[11].trim();
+
+            if (index === '1') {
+              if (gender === 'M' && !foundM) {
+                maleName = name;
+                foundM = true;
+              }
+              if (gender === 'F' && !foundF) {
+                femaleName = name;
+                foundF = true;
+              }
+            }
+          }
+        }
+        if (foundM && foundF) break;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch common names from CSV", err);
+  }
+  return { maleName, femaleName };
+}
+
+// Helper to calculate distance between two coordinates in kilometers
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+export async function getClosestPlaces(lat: number, lon: number, limit = 5) {
+  try {
+    const targetUrl = encodeURIComponent('https://radio.garden/api/ara/content/places');
+    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${targetUrl}`);
+    if (!res.ok) throw new Error('Fetch places failed');
+    const data = await res.json();
+
+    // API returns geo as [longitude, latitude]
+    const placesWithDistance = data.data.list.map((place: any) => ({
+      ...place,
+      distance: haversineDistance(lat, lon, place.geo[1], place.geo[0])
+    }));
+
+    placesWithDistance.sort((a: any, b: any) => a.distance - b.distance);
+    return placesWithDistance.slice(0, limit);
+  } catch (err) {
+    console.error("Error fetching Radio Garden places", err);
+    return [];
+  }
+}
+
+export async function getChannelsForPlace(placeId: string) {
+  try {
+    const targetUrl = encodeURIComponent(`https://radio.garden/api/ara/content/page/${placeId}/channels`);
+    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${targetUrl}`);
+    if (!res.ok) throw new Error('Fetch channels failed');
+    const data = await res.json();
+
+    // Channel data is deeply nested in the response
+    const channels = data?.data?.content?.[0]?.items || [];
+
+    return channels.map((item: any) => {
+      // The Codetabs proxy sometimes nests the actual station data inside a `page` key vs direct flat items.
+      const entry = item.page || item;
+
+      // Ensure we have an href or url string
+      const linkTarget = entry.href || entry.url;
+      if (!linkTarget || typeof linkTarget !== 'string') return null;
+
+      const id = linkTarget.split('/').pop();
+      // Titles from Radio Garden APIs can be polluted with newlines and carriage returns, so strip them down.
+      const title = (entry.title || "Unknown Station").replace(/[\r\n]+/g, '').trim();
+
+      return {
+        id,
+        title,
+        href: linkTarget
+      };
+    }).filter((c: any) => c && c.id);
+  } catch (err) {
+    console.error("Error fetching Radio Garden channels", err);
+    return [];
+  }
+}
