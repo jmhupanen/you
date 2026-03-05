@@ -133,17 +133,17 @@ function App() {
       <header className="header">
         <div className="header-bg-glow"></div>
         <h1>
-          <span className="greeting">
-            {data.greeting}
-            {data.hasPredictedName && (
-              <span
-                className="name-tooltip-trigger"
-                data-tooltip="(or whatever your name is)"
-              >
-                *
-              </span>
-            )}!
-          </span>
+          <span className="greeting">{data.greeting}</span>
+          {data.hasPredictedName && (
+            <span
+              className="name-tooltip-trigger"
+              data-tooltip="(or whatever your name is)"
+              style={{ color: 'var(--accent-purple)' }}
+            >
+              *
+            </span>
+          )}
+          <span className="greeting">!</span>
         </h1>
         <p className="subtitle">Here is what we know about your connection context.</p>
       </header>

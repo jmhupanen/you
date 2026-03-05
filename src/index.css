@@ -585,4 +585,23 @@ body {
     .stagger-3 {
         grid-column: span 12;
     }
+
+    .player-container {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .now-playing {
+        text-align: left;
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .volume-control {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
 }
