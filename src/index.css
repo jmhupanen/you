@@ -21,6 +21,12 @@
     padding: 0;
 }
 
+html,
+body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-dark);
@@ -127,12 +133,14 @@ body {
     margin-bottom: 0.5rem;
     background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
 .greeting {
     background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -580,6 +588,25 @@ body {
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+
+    .header h1 {
+        font-size: 2rem;
+    }
+
+    .dashboard {
+        padding: 0;
+    }
+
+    .weather-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .temp {
+        font-size: 2.5rem;
+    }
 
     .stagger-2,
     .stagger-3 {

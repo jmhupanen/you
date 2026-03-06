@@ -137,7 +137,7 @@ function App() {
           {data.hasPredictedName && (
             <span
               className="name-tooltip-trigger"
-              data-tooltip="(or whatever your name is)"
+              data-tooltip="or whatever your name is"
               style={{ color: 'var(--accent-purple)' }}
             >
               *
