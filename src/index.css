@@ -322,6 +322,11 @@ body {
     margin-bottom: 1rem;
 }
 
+.weather-symbol {
+    font-size: 3rem;
+    line-height: 1;
+}
+
 .temp {
     font-size: 3.5rem;
     font-weight: 700;
@@ -404,6 +409,37 @@ body {
 .status-dot.offline {
     background-color: var(--accent-orange);
     box-shadow: 0 0 10px var(--accent-orange);
+}
+
+.refresh-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.refresh-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
 }
 
 /* Radio Player Styling */

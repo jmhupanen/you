@@ -1,11 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace } from './utils';
-import { Globe, Droplets, Wind, Thermometer, Monitor, Cpu, Fingerprint, MapPin, Loader2, Compass, Layers, Radio, Play, Pause, Volume2 } from 'lucide-react';
+import { Globe, Droplets, Wind, Thermometer, Monitor, Cpu, Fingerprint, MapPin, Loader2, Compass, Layers, Radio, Play, Pause, Volume2, RefreshCw } from 'lucide-react';
+
+function getWeatherSymbol(weathercode: number, isDay: number): string {
+  if (weathercode === 0) return isDay ? '☀️' : '🌙';
+  if (weathercode <= 2) return isDay ? '🌤️' : '🌙';
+  if (weathercode === 3) return '☁️';
+  if (weathercode <= 48) return '🌫️';
+  if (weathercode <= 57) return '🌦️';
+  if (weathercode <= 67) return '🌧️';
+  if (weathercode <= 77) return '❄️';
+  if (weathercode <= 82) return '🌧️';
+  if (weathercode <= 86) return '🌨️';
+  return '⛈️';
+}
 
 function App() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Weather Refresh State
+  const [weatherTimestamp, setWeatherTimestamp] = useState<Date | null>(null);
+  const [isWeatherUpdating, setIsWeatherUpdating] = useState(false);
 
   // Radio Garden State
   const [places, setPlaces] = useState<any[]>([]);
@@ -47,6 +64,9 @@ function App() {
           weather,
           coords
         });
+        if (weather) {
+          setWeatherTimestamp(new Date());
+        }
       } catch (err: any) {
         setError(err.message || "An unexpected error occurred");
       } finally {
@@ -56,6 +76,37 @@ function App() {
 
     loadData();
   }, []);
+
+  // Weather auto-refresh interval (1 minute)
+  useEffect(() => {
+    if (!data?.coords) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const w = await getWeather(data.coords.lat, data.coords.lon);
+        setData((prev: any) => ({ ...prev, weather: w }));
+        setWeatherTimestamp(new Date());
+      } catch (e) {
+        console.warn("Interval weather update failed", e);
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [data?.coords]);
+
+  const handleManualWeatherRefresh = async () => {
+    if (!data?.coords || isWeatherUpdating) return;
+    setIsWeatherUpdating(true);
+    try {
+      const w = await getWeather(data.coords.lat, data.coords.lon);
+      setData((prev: any) => ({ ...prev, weather: w }));
+      setWeatherTimestamp(new Date());
+    } catch (e) {
+      console.warn("Manual weather update failed", e);
+    } finally {
+      setIsWeatherUpdating(false);
+    }
+  };
 
   // Load nearest radio places when coordinates are found
   useEffect(() => {
@@ -152,12 +203,23 @@ function App() {
         {data.weather && (
           <section className="card weather-card stagger-1">
             <div className="card-bg-pulse"></div>
-            <div className="card-header">
-              <Thermometer className="icon text-orange" />
-              <h2>Current Weather</h2>
+            <div className="card-header" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Thermometer className="icon text-orange" />
+                <h2>Current Weather</h2>
+              </div>
+              <button
+                onClick={handleManualWeatherRefresh}
+                className="refresh-btn"
+                disabled={isWeatherUpdating}
+                title="Refresh Weather"
+              >
+                <RefreshCw size={18} className={`text-orange ${isWeatherUpdating ? 'spinning' : ''}`} />
+              </button>
             </div>
-            <div className="card-body">
+            <div className="card-body" style={{ width: '100%' }}>
               <div className="weather-main">
+                <span className="weather-symbol">{getWeatherSymbol(data.weather.weathercode, data.weather.is_day)}</span>
                 <span className="temp">{data.weather.temperature}&deg;C</span>
                 <span className="wind"><Wind size={16} /> {data.weather.windspeed} km/h</span>
               </div>
@@ -165,6 +227,11 @@ function App() {
                 <MapPin size={16} />
                 <span>{data.coords?.countryCode ? `${data.coords.countryCode} · ` : ''}Lat: {data.coords?.lat.toFixed(2)}, Lon: {data.coords?.lon.toFixed(2)}</span>
               </div>
+              {weatherTimestamp && (
+                <div className="timestamp-info" style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Last updated: {weatherTimestamp.toLocaleTimeString()}
+                </div>
+              )}
             </div>
           </section>
         )}
