@@ -24,6 +24,7 @@
 html,
 body {
     overflow-x: hidden;
+    scrollbar-gutter: stable;
     max-width: 100%;
 }
 
@@ -219,6 +220,7 @@ body {
 
 /* Card Styling */
 .card {
+    min-width: 0;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 1.25rem;

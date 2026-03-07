@@ -1,6 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace } from './utils';
-import { Globe, Droplets, Wind, Thermometer, Monitor, Cpu, Fingerprint, MapPin, Loader2, Compass, Layers, Radio, Play, Pause, Volume2, RefreshCw } from 'lucide-react';
+import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, RefreshCw } from 'lucide-react';
+import { FaWindows, FaApple, FaLinux, FaAndroid } from 'react-icons/fa';
+
+function PlatformIcon({ platform }: { platform: string }) {
+  const p = platform.toLowerCase();
+  const props = { size: 16, style: { marginRight: '0.35rem', flexShrink: 0 } };
+  if (p.includes('win')) return <FaWindows {...props} />;
+  if (p.includes('mac') || p.includes('iphone') || p.includes('ipad')) return <FaApple {...props} />;
+  if (p.includes('android')) return <FaAndroid {...props} />;
+  if (p.includes('linux')) return <FaLinux {...props} />;
+  return null;
+}
 
 function getWeatherSymbol(weathercode: number, isDay: number): string {
   if (weathercode === 0) return isDay ? '☀️' : '🌙';
@@ -196,7 +207,7 @@ function App() {
           )}
           <span className="greeting">!</span>
         </h1>
-        <p className="subtitle">Here is what we know about your connection context.</p>
+        <p className="subtitle">Every website you visit knows this about you.</p>
       </header>
 
       <main className="grid">
@@ -257,7 +268,7 @@ function App() {
           <div className="card-body details-grid">
             <div className="detail-item">
               <span className="label">Platform</span>
-              <span className="value">{data.fingerprint.platform}</span>
+              <span className="value" style={{ display: 'flex', alignItems: 'center' }}><PlatformIcon platform={data.fingerprint.platform} />{data.fingerprint.platform}</span>
             </div>
             <div className="detail-item">
               <span className="label">Resolution</span>
