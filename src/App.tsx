@@ -410,7 +410,7 @@ function App() {
                 <div className="orientation-visuals">
                   {/* Compass */}
                   <div className="compass-container">
-                    <div className="compass-ring">
+                    <div className="compass-ring" style={{ transform: `rotate(${-(orientation?.alpha ?? 0)}deg)` }}>
                       <svg viewBox="0 0 160 160" width="160" height="160">
                         <circle cx="80" cy="80" r="76" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
                         {[0, 90, 180, 270].map(deg => {
@@ -425,7 +425,7 @@ function App() {
                           const rad = (deg - 90) * Math.PI / 180;
                           return <text key={label} x={80 + 56 * Math.cos(rad)} y={80 + 56 * Math.sin(rad)} textAnchor="middle" dominantBaseline="central" fill={color} fontSize="13" fontWeight="700" fontFamily="Inter, sans-serif">{label}</text>;
                         })}
-                        <g transform={`rotate(${-(orientation?.alpha ?? 0)}, 80, 80)`}>
+                        <g>
                           <polygon points="80,22 74,80 86,80" fill="#ef4444" opacity="0.9" />
                           <polygon points="80,138 74,80 86,80" fill="rgba(255,255,255,0.2)" opacity="0.9" />
                           <circle cx="80" cy="80" r="5" fill="rgba(24,24,27,0.9)" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />

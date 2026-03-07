@@ -354,6 +354,7 @@ body {
 
 .compass-ring {
     filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.25));
+    will-change: transform;
 }
 
 .compass-heading {
