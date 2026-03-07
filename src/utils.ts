@@ -10,10 +10,24 @@ function parseBrowser(ua: string): string {
   return 'Unknown';
 }
 
+function getGPUInfo(): string | null {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null;
+    if (!gl) return null;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (ext) return gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || null;
+    return gl.getParameter(gl.RENDERER) || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getFingerprint() {
   const nav = window.navigator as any;
   const conn = (navigator as any).connection;
   return {
+    gpu: getGPUInfo(),
     userAgent: navigator.userAgent,
     language: navigator.language,
     languages: navigator.languages.join(', '),

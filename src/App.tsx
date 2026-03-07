@@ -34,6 +34,9 @@ function App() {
   // Weather Refresh State
   const [weatherTimestamp, setWeatherTimestamp] = useState<Date | null>(null);
   const [isWeatherUpdating, setIsWeatherUpdating] = useState(false);
+  const lastWeatherSlot = useRef<number>(-1);
+
+  const currentWeatherSlot = () => Math.floor((Math.floor(Date.now() / 1000) - 30) / 900);
 
   // Orientation State
   const [orientation, setOrientation] = useState<{ alpha: number; beta: number; gamma: number } | null>(null);
@@ -81,6 +84,7 @@ function App() {
         });
         if (weather) {
           setWeatherTimestamp(new Date());
+          lastWeatherSlot.current = currentWeatherSlot();
         }
       } catch (err: any) {
         setError(err.message || "An unexpected error occurred");
@@ -92,11 +96,13 @@ function App() {
     loadData();
   }, []);
 
-  // Weather auto-refresh interval (1 minute)
+  // Weather auto-refresh: poll every 30s, fetch only when a new 15-min slot begins (:00:30, :15:30, :30:30, :45:30)
   useEffect(() => {
     if (!data?.coords) return;
 
     const interval = setInterval(async () => {
+      if (currentWeatherSlot() <= lastWeatherSlot.current) return;
+      lastWeatherSlot.current = currentWeatherSlot();
       try {
         const w = await getWeather(data.coords.lat, data.coords.lon);
         setData((prev: any) => ({ ...prev, weather: w }));
@@ -104,7 +110,7 @@ function App() {
       } catch (e) {
         console.warn("Interval weather update failed", e);
       }
-    }, 60000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [data?.coords]);
@@ -249,7 +255,6 @@ function App() {
             <span
               className="name-tooltip-trigger"
               data-tooltip="or whatever your name is"
-              style={{ color: 'var(--accent-purple)' }}
             >
               *
             </span>
@@ -348,6 +353,12 @@ function App() {
               <span className="label">Timezone</span>
               <span className="value truncate">{data.fingerprint.timezone}</span>
             </div>
+            {data.fingerprint.gpu && (
+              <div className="detail-item full-width">
+                <span className="label">GPU</span>
+                <span className="value">{data.fingerprint.gpu}</span>
+              </div>
+            )}
           </div>
         </section>
 
@@ -511,7 +522,7 @@ function App() {
               </div>
               <div className="detail-item">
                 <span className="label">Referred From</span>
-                <span className="value truncate">{data.fingerprint.referrer || 'Direct'}</span>
+                <span className="value" style={{ wordBreak: 'break-all' }}>{data.fingerprint.referrer || 'Direct'}</span>
               </div>
             </div>
           </div>
