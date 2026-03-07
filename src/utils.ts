@@ -1,7 +1,18 @@
 // src/utils.ts
 
+function parseBrowser(ua: string): string {
+  if (/Edg\/[\d.]+/.test(ua)) return `Edge ${ua.match(/Edg\/([\d]+)/)?.[1]}`;
+  if (/OPR\/[\d.]+/.test(ua)) return `Opera ${ua.match(/OPR\/([\d]+)/)?.[1]}`;
+  if (/SamsungBrowser\/[\d.]+/.test(ua)) return `Samsung Internet ${ua.match(/SamsungBrowser\/([\d]+)/)?.[1]}`;
+  if (/Chrome\/[\d.]+/.test(ua)) return `Chrome ${ua.match(/Chrome\/([\d]+)/)?.[1]}`;
+  if (/Firefox\/[\d.]+/.test(ua)) return `Firefox ${ua.match(/Firefox\/([\d]+)/)?.[1]}`;
+  if (/Version\/[\d.]+/.test(ua) && /Safari/.test(ua)) return `Safari ${ua.match(/Version\/([\d]+)/)?.[1]}`;
+  return 'Unknown';
+}
+
 export async function getFingerprint() {
   const nav = window.navigator as any;
+  const conn = (navigator as any).connection;
   return {
     userAgent: navigator.userAgent,
     language: navigator.language,
@@ -14,21 +25,29 @@ export async function getFingerprint() {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     cookiesEnabled: navigator.cookieEnabled,
     online: navigator.onLine,
+    browser: parseBrowser(navigator.userAgent),
+    referrer: document.referrer || null,
+    connectionType: conn?.effectiveType || null,
+    downlink: conn?.downlink ?? null,
   };
 }
 
-export async function getLocation(): Promise<{ lat: number, lon: number, countryCode?: string, country?: string }> {
+export async function getLocation(): Promise<{ lat: number, lon: number, countryCode?: string, country?: string, ip?: string, isp?: string, city?: string, region?: string }> {
   const geoRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
   if (!geoRes.ok) throw new Error('Failed to fetch from GeoJS API');
 
   const geoData = await geoRes.json();
   const countryCode = geoData.country_code;
   const country = geoData.country;
+  const ip = geoData.ip || null;
+  const isp = geoData.organization_name || (geoData.organization ? geoData.organization.replace(/^AS\d+\s+/, '') : null);
+  const city = geoData.city || null;
+  const region = geoData.region || null;
   const lat = geoData.latitude ? parseFloat(geoData.latitude) : null;
   const lon = geoData.longitude ? parseFloat(geoData.longitude) : null;
 
   if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
-    return { lat, lon, countryCode, country };
+    return { lat, lon, countryCode, country, ip, isp, city, region };
   }
 
   // Fallback: Fetch coordinates using restcountries API by country code
@@ -37,7 +56,7 @@ export async function getLocation(): Promise<{ lat: number, lon: number, country
     const countryInfo = await countryRes.json();
     const coords = countryInfo[0].capitalInfo?.latlng || countryInfo[0].latlng || [0, 0];
     const countryName = countryInfo[0].name?.common || countryCode;
-    return { lat: coords[0], lon: coords[1], countryCode, country: countryName };
+    return { lat: coords[0], lon: coords[1], countryCode, country: countryName, ip, isp, city, region };
   }
 
   throw new Error('Could not determine location from GeoJS API');

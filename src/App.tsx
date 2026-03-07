@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace } from './utils';
-import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, RefreshCw } from 'lucide-react';
+import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, RefreshCw, Network, Compass } from 'lucide-react';
 import { FaWindows, FaApple, FaLinux, FaAndroid } from 'react-icons/fa';
 
 function PlatformIcon({ platform }: { platform: string }) {
@@ -34,6 +34,10 @@ function App() {
   // Weather Refresh State
   const [weatherTimestamp, setWeatherTimestamp] = useState<Date | null>(null);
   const [isWeatherUpdating, setIsWeatherUpdating] = useState(false);
+
+  // Orientation State
+  const [orientation, setOrientation] = useState<{ alpha: number; beta: number; gamma: number } | null>(null);
+  const [orientationSupport, setOrientationSupport] = useState<'checking' | 'available' | 'needs-permission' | 'denied' | 'unavailable'>('checking');
 
   // Radio Garden State
   const [places, setPlaces] = useState<any[]>([]);
@@ -177,6 +181,51 @@ function App() {
     }
   }, [volume, selectedChannel]);
 
+  // Orientation: detect support on mount
+  useEffect(() => {
+    if (typeof window.DeviceOrientationEvent === 'undefined') {
+      setOrientationSupport('unavailable');
+      return;
+    }
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      setOrientationSupport('needs-permission');
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    const probe = (e: DeviceOrientationEvent) => {
+      if (e.alpha !== null || e.beta !== null || e.gamma !== null) {
+        setOrientationSupport('available');
+        window.removeEventListener('deviceorientation', probe);
+        clearTimeout(timer);
+      }
+    };
+    window.addEventListener('deviceorientation', probe);
+    timer = setTimeout(() => {
+      window.removeEventListener('deviceorientation', probe);
+      setOrientationSupport(prev => prev === 'checking' ? 'unavailable' : prev);
+    }, 3000);
+    return () => { clearTimeout(timer); window.removeEventListener('deviceorientation', probe); };
+  }, []);
+
+  // Orientation: live listener once available
+  useEffect(() => {
+    if (orientationSupport !== 'available') return;
+    const handler = (e: DeviceOrientationEvent) => {
+      setOrientation({ alpha: e.alpha ?? 0, beta: e.beta ?? 0, gamma: e.gamma ?? 0 });
+    };
+    window.addEventListener('deviceorientation', handler);
+    return () => window.removeEventListener('deviceorientation', handler);
+  }, [orientationSupport]);
+
+  const requestOrientationPermission = async () => {
+    try {
+      const result = await (DeviceOrientationEvent as any).requestPermission();
+      setOrientationSupport(result === 'granted' ? 'available' : 'denied');
+    } catch {
+      setOrientationSupport('denied');
+    }
+  };
+
   if (loading) {
     return (
       <div className="loader-container">
@@ -302,7 +351,131 @@ function App() {
           </div>
         </section>
 
-        <section className="card browser-card span-full stagger-4">
+        <section className="card connection-card stagger-4">
+          <div className="card-header">
+            <Network className="icon text-green" />
+            <h2>Connection</h2>
+          </div>
+          <div className="card-body details-grid">
+            {data.coords?.ip && (
+              <div className="detail-item">
+                <span className="label">IP Address</span>
+                <span className="value code-like">{data.coords.ip}</span>
+              </div>
+            )}
+            {data.coords?.isp && (
+              <div className="detail-item">
+                <span className="label">ISP</span>
+                <span className="value truncate">{data.coords.isp}</span>
+              </div>
+            )}
+            {data.coords?.city && (
+              <div className="detail-item">
+                <span className="label">City</span>
+                <span className="value">{data.coords.city}{data.coords.region ? `, ${data.coords.region}` : ''}</span>
+              </div>
+            )}
+            {data.fingerprint.connectionType && (
+              <div className="detail-item">
+                <span className="label">Link Type</span>
+                <span className="value">{data.fingerprint.connectionType.toUpperCase()}{data.fingerprint.downlink != null ? ` · ${data.fingerprint.downlink} Mbps` : ''}</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="card orientation-card stagger-5">
+          <div className="card-header">
+            <Compass className="icon text-blue" />
+            <h2>Device Orientation</h2>
+          </div>
+          <div className="card-body">
+            {orientationSupport === 'checking' && (
+              <div className="orientation-unavailable"><p>Detecting orientation sensor...</p></div>
+            )}
+            {orientationSupport === 'needs-permission' && (
+              <div className="orientation-permission">
+                <p className="orientation-permission-text">This device has a gyroscope, but iOS requires permission to read it.</p>
+                <button className="orientation-btn" onClick={requestOrientationPermission}>Enable Gyroscope</button>
+              </div>
+            )}
+            {orientationSupport === 'denied' && (
+              <div className="orientation-unavailable"><p>Gyroscope access was denied. Reload the page and tap "Allow" to enable it.</p></div>
+            )}
+            {orientationSupport === 'unavailable' && (
+              <div className="orientation-unavailable"><p>No orientation sensor detected on this device.</p></div>
+            )}
+            {orientationSupport === 'available' && (
+              <div className="orientation-live">
+                <div className="orientation-visuals">
+                  {/* Compass */}
+                  <div className="compass-container">
+                    <div className="compass-ring">
+                      <svg viewBox="0 0 160 160" width="160" height="160">
+                        <circle cx="80" cy="80" r="76" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
+                        {[0, 90, 180, 270].map(deg => {
+                          const rad = (deg - 90) * Math.PI / 180;
+                          return <line key={deg} x1={80 + 68 * Math.cos(rad)} y1={80 + 68 * Math.sin(rad)} x2={80 + 76 * Math.cos(rad)} y2={80 + 76 * Math.sin(rad)} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />;
+                        })}
+                        {[45, 135, 225, 315].map(deg => {
+                          const rad = (deg - 90) * Math.PI / 180;
+                          return <line key={deg} x1={80 + 71 * Math.cos(rad)} y1={80 + 71 * Math.sin(rad)} x2={80 + 76 * Math.cos(rad)} y2={80 + 76 * Math.sin(rad)} stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />;
+                        })}
+                        {([['N', 0, '#ef4444'], ['E', 90, 'rgba(255,255,255,0.5)'], ['S', 180, 'rgba(255,255,255,0.5)'], ['W', 270, 'rgba(255,255,255,0.5)']] as [string, number, string][]).map(([label, deg, color]) => {
+                          const rad = (deg - 90) * Math.PI / 180;
+                          return <text key={label} x={80 + 56 * Math.cos(rad)} y={80 + 56 * Math.sin(rad)} textAnchor="middle" dominantBaseline="central" fill={color} fontSize="13" fontWeight="700" fontFamily="Inter, sans-serif">{label}</text>;
+                        })}
+                        <g transform={`rotate(${-(orientation?.alpha ?? 0)}, 80, 80)`}>
+                          <polygon points="80,22 74,80 86,80" fill="#ef4444" opacity="0.9" />
+                          <polygon points="80,138 74,80 86,80" fill="rgba(255,255,255,0.2)" opacity="0.9" />
+                          <circle cx="80" cy="80" r="5" fill="rgba(24,24,27,0.9)" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
+                        </g>
+                      </svg>
+                    </div>
+                    <div className="compass-heading">{Math.round(orientation?.alpha ?? 0)}°</div>
+                  </div>
+
+                  {/* Bubble Level */}
+                  <div className="level-container">
+                    <div className="level-title">Tilt Level</div>
+                    <div className="level-arena">
+                      <div className="level-crosshair-h" />
+                      <div className="level-crosshair-v" />
+                      <div className="level-target" />
+                      {(() => {
+                        const xPx = (Math.max(-45, Math.min(45, orientation?.gamma ?? 0)) / 45) * 56;
+                        const yPx = (Math.max(-45, Math.min(45, orientation?.beta ?? 0)) / 45) * 56;
+                        const centered = Math.abs(orientation?.gamma ?? 99) < 5 && Math.abs(orientation?.beta ?? 99) < 5;
+                        return <div className={`level-bubble${centered ? ' level-bubble--centered' : ''}`} style={{ transform: `translate(calc(-50% + ${xPx}px), calc(-50% + ${yPx}px))` }} />;
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Numeric readouts */}
+                <div className="orientation-readouts">
+                  <div className="readout-item">
+                    <span className="readout-label">Heading (α)</span>
+                    <span className="readout-value text-blue">{Math.round(orientation?.alpha ?? 0)}°</span>
+                    <span className="readout-sub">Compass</span>
+                  </div>
+                  <div className="readout-item">
+                    <span className="readout-label">Front/Back (β)</span>
+                    <span className="readout-value text-purple">{(orientation?.beta ?? 0).toFixed(1)}°</span>
+                    <span className="readout-sub">Pitch</span>
+                  </div>
+                  <div className="readout-item">
+                    <span className="readout-label">Left/Right (γ)</span>
+                    <span className="readout-value text-orange">{(orientation?.gamma ?? 0).toFixed(1)}°</span>
+                    <span className="readout-sub">Roll</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="card browser-card stagger-6">
           <div className="card-header">
             <Globe className="icon text-green" />
             <h2>Browser Footprint</h2>
@@ -313,6 +486,10 @@ function App() {
               <span className="value code-like">{data.fingerprint.userAgent}</span>
             </div>
             <div className="details-grid mt-4">
+              <div className="detail-item">
+                <span className="label">Browser</span>
+                <span className="value">{data.fingerprint.browser}</span>
+              </div>
               <div className="detail-item">
                 <span className="label">Primary Language</span>
                 <span className="value">{data.fingerprint.language}</span>
@@ -332,12 +509,16 @@ function App() {
                   {data.fingerprint.online ? 'Online' : 'Offline'}
                 </span>
               </div>
+              <div className="detail-item">
+                <span className="label">Referred From</span>
+                <span className="value truncate">{data.fingerprint.referrer || 'Direct'}</span>
+              </div>
             </div>
           </div>
         </section>
 
         {places.length > 0 && (
-          <section className="card radio-card span-full stagger-5">
+          <section className="card radio-card stagger-7">
             <div className="card-header">
               <Radio className="icon text-purple" />
               <h2>Local Radio Streams</h2>
