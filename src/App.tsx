@@ -410,7 +410,7 @@ function App() {
                 <div className="orientation-visuals">
                   {/* Compass */}
                   <div className="compass-container">
-                    <div className="compass-ring" style={{ transform: `rotate(${-(orientation?.alpha ?? 0)}deg)` }}>
+                    <div className="compass-ring" style={{ transform: `rotate(${orientation?.alpha ?? 0}deg)` }}>
                       <svg viewBox="0 0 160 160" width="160" height="160">
                         <circle cx="80" cy="80" r="76" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
                         {[0, 90, 180, 270].map(deg => {
