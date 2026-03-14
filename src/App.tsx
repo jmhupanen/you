@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace } from './utils';
-import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, RefreshCw, Network, Compass } from 'lucide-react';
+import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, RefreshCw, Network, Compass, BatteryCharging, Battery } from 'lucide-react';
 import { FaWindows, FaApple, FaLinux, FaAndroid } from 'react-icons/fa';
 
 function PlatformIcon({ platform }: { platform: string }) {
@@ -37,6 +37,9 @@ function App() {
   const lastWeatherSlot = useRef<number>(-1);
 
   const currentWeatherSlot = () => Math.floor((Math.floor(Date.now() / 1000) - 30) / 900);
+
+  // Battery State
+  const [battery, setBattery] = useState<{ level: number, charging: boolean } | null>(null);
 
   // Orientation State
   const [orientation, setOrientation] = useState<{ alpha: number; beta: number; gamma: number } | null>(null);
@@ -128,6 +131,35 @@ function App() {
       setIsWeatherUpdating(false);
     }
   };
+
+  // Battery monitoring
+  useEffect(() => {
+    let bm: any = null;
+    const updateBattery = () => {
+      if (bm) {
+        setBattery({
+          level: bm.level,
+          charging: bm.charging
+        });
+      }
+    };
+
+    if ('getBattery' in navigator) {
+      (navigator as any).getBattery().then((batteryManager: any) => {
+        bm = batteryManager;
+        updateBattery();
+        bm.addEventListener('levelchange', updateBattery);
+        bm.addEventListener('chargingchange', updateBattery);
+      }).catch((e: any) => console.warn("Battery API error", e));
+    }
+
+    return () => {
+      if (bm) {
+        bm.removeEventListener('levelchange', updateBattery);
+        bm.removeEventListener('chargingchange', updateBattery);
+      }
+    };
+  }, []);
 
   // Load nearest radio places when coordinates are found
   useEffect(() => {
@@ -349,6 +381,20 @@ function App() {
               <span className="label">Device Memory</span>
               <span className="value">{data.fingerprint.deviceMemory}</span>
             </div>
+            {battery && (
+              <div className="detail-item">
+                <span className="label">Battery</span>
+                <span className="value" style={{
+                  color: battery.charging || battery.level >= 0.8 ? 'var(--accent-green)' : (battery.level <= 0.2 ? '#ef4444' : 'var(--accent-yellow)'),
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  {battery.charging ? <BatteryCharging size={18} /> : <Battery size={18} />}
+                  {Math.round(battery.level * 100)}% {battery.charging ? '(Charging)' : ''}
+                </span>
+              </div>
+            )}
             <div className="detail-item">
               <span className="label">Timezone</span>
               <span className="value truncate">{data.fingerprint.timezone}</span>
