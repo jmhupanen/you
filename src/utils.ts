@@ -46,7 +46,7 @@ export async function getFingerprint() {
   };
 }
 
-export async function getLocation(): Promise<{ lat: number, lon: number, countryCode?: string, country?: string, ip?: string, isp?: string, city?: string, region?: string }> {
+export async function getLocation(): Promise<{ lat: number, lon: number, countryCode?: string, country?: string, ip?: string, isp?: string, city?: string, region?: string, timezone?: string }> {
   const geoRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
   if (!geoRes.ok) throw new Error('Failed to fetch from GeoJS API');
 
@@ -57,11 +57,12 @@ export async function getLocation(): Promise<{ lat: number, lon: number, country
   const isp = geoData.organization_name || (geoData.organization ? geoData.organization.replace(/^AS\d+\s+/, '') : null);
   const city = geoData.city || null;
   const region = geoData.region || null;
+  const timezone = geoData.timezone || null;
   const lat = geoData.latitude ? parseFloat(geoData.latitude) : null;
   const lon = geoData.longitude ? parseFloat(geoData.longitude) : null;
 
   if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
-    return { lat, lon, countryCode, country, ip, isp, city, region };
+    return { lat, lon, countryCode, country, ip, isp, city, region, timezone };
   }
 
   // Fallback: Fetch coordinates using restcountries API by country code
@@ -70,7 +71,9 @@ export async function getLocation(): Promise<{ lat: number, lon: number, country
     const countryInfo = await countryRes.json();
     const coords = countryInfo[0].capitalInfo?.latlng || countryInfo[0].latlng || [0, 0];
     const countryName = countryInfo[0].name?.common || countryCode;
-    return { lat: coords[0], lon: coords[1], countryCode, country: countryName, ip, isp, city, region };
+    // Note: timezone from restcountries might be an array, but we'll try to keep it simple
+    const timezone = countryInfo[0].timezones?.[0] || null;
+    return { lat: coords[0], lon: coords[1], countryCode, country: countryName, ip, isp, city, region, timezone };
   }
 
   throw new Error('Could not determine location from GeoJS API');
@@ -205,4 +208,22 @@ export async function getChannelsForPlace(placeId: string) {
     console.error("Error fetching Radio Garden channels", err);
     return [];
   }
+}
+
+export const countryToLang: Record<string, string> = {
+  // Common mappings (ISO 3166-1 alpha-2 to BCP 47 language tags)
+  'US': 'en-US', 'GB': 'en-GB', 'AU': 'en-AU', 'CA': 'en-CA', 'IE': 'en-IE', 'NZ': 'en-NZ',
+  'FR': 'fr-FR', 'DE': 'de-DE', 'IT': 'it-IT', 'ES': 'es-ES', 'PT': 'pt-PT', 'NL': 'nl-NL',
+  'SE': 'sv-SE', 'NO': 'no-NO', 'DK': 'da-DK', 'FI': 'fi-FI', 'EE': 'et-EE', 'LV': 'lv-LV',
+  'LT': 'lt-LT', 'PL': 'pl-PL', 'CZ': 'cs-CZ', 'HU': 'hu-HU', 'RO': 'ro-RO', 'BG': 'bg-BG',
+  'GR': 'el-GR', 'RU': 'ru-RU', 'UA': 'uk-UA', 'TR': 'tr-TR', 'IL': 'he-IL', 'EG': 'ar-EG',
+  'SA': 'ar-SA', 'AE': 'ar-AE', 'IN': 'hi-IN', 'ZA': 'en-ZA', 'CN': 'zh-CN', 'TW': 'zh-TW',
+  'JP': 'ja-JP', 'KR': 'ko-KR', 'MX': 'es-MX', 'AR': 'es-AR', 'CO': 'es-CO', 'BR': 'pt-BR',
+  'CH': 'de-CH', 'AT': 'de-AT', 'BE': 'nl-BE', 'ID': 'id-ID', 'MY': 'ms-MY', 'TH': 'th-TH',
+  'VN': 'vi-VN', 'PH': 'tl-PH'
+};
+
+export function getLanguageFromCountryCode(countryCode?: string): string | undefined {
+  if (!countryCode) return undefined;
+  return countryToLang[countryCode.toUpperCase()];
 }

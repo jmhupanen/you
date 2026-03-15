@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace } from './utils';
-import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, RefreshCw, Network, Compass, BatteryCharging, Battery } from 'lucide-react';
+import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace, getLanguageFromCountryCode } from './utils';
+import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, RefreshCw, Network, Compass, BatteryCharging, Battery, Clock } from 'lucide-react';
 import { FaWindows, FaApple, FaLinux, FaAndroid } from 'react-icons/fa';
 
 function PlatformIcon({ platform }: { platform: string }) {
@@ -37,6 +37,14 @@ function App() {
   const lastWeatherSlot = useRef<number>(-1);
 
   const currentWeatherSlot = () => Math.floor((Math.floor(Date.now() / 1000) - 30) / 900);
+
+  // Time state
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Battery State
   const [battery, setBattery] = useState<{ level: number, charging: boolean } | null>(null);
@@ -332,6 +340,91 @@ function App() {
             </div>
           </section>
         )}
+
+        <section className="card datetime-card stagger-1">
+          <div className="card-header">
+            <Clock className="icon text-orange" />
+            <h2>Local Time</h2>
+          </div>
+          <div className="card-body">
+            {(() => {
+              const tz = data.coords?.timezone || data.fingerprint?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+              let timeString = '';
+              let dateString = '';
+              let timeZoneName = '';
+              let hour = 12;
+
+              try {
+                const locationLang = getLanguageFromCountryCode(data.coords?.countryCode);
+                const locale = locationLang || 'en-US';
+
+                const partsStr = new Intl.DateTimeFormat('en-US', {
+                  timeZone: tz,
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                }).format(currentTime);
+                hour = parseInt(partsStr.split(':')[0], 10);
+
+                timeString = new Intl.DateTimeFormat(locale, {
+                  timeZone: tz,
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  second: '2-digit'
+                }).format(currentTime);
+
+                dateString = new Intl.DateTimeFormat(locale, {
+                  timeZone: tz,
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }).format(currentTime);
+
+                timeZoneName = new Intl.DateTimeFormat(locale, {
+                  timeZone: tz,
+                  timeZoneName: 'long'
+                }).format(currentTime).split(', ')[1] || tz;
+              } catch (e) {
+                // Fallback if timezone is invalid
+                timeString = currentTime.toLocaleTimeString();
+                dateString = currentTime.toLocaleDateString();
+                timeZoneName = tz;
+              }
+
+              let timeOfDayGreeting = 'Hello';
+              if (hour >= 5 && hour < 12) timeOfDayGreeting = 'Good Morning';
+              else if (hour >= 12 && hour < 17) timeOfDayGreeting = 'Good Afternoon';
+              else if (hour >= 17 && hour < 22) timeOfDayGreeting = 'Good Evening';
+              else timeOfDayGreeting = 'Good Night';
+
+              const isSummerTime = timeZoneName.toLowerCase().includes('summer') || timeZoneName.toLowerCase().includes('daylight');
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{timeOfDayGreeting}!</span>
+                    <span style={{ fontSize: '2rem', fontWeight: 'bold', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{timeString}</span>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{dateString}</span>
+                  </div>
+                  <div className="details-grid">
+                    <div className="detail-item">
+                      <span className="label">Timezone</span>
+                      <span className="value">{timeZoneName}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="label">Summer Time Status</span>
+                      <span className="value" style={{ color: isSummerTime ? 'var(--accent-orange)' : 'var(--text-secondary)' }}>
+                        {isSummerTime ? 'Active (DST)' : 'Inactive / Standard'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </section>
 
         {/* Unless geolocation fails, show info. If fails, show fallback message */}
         {!data.weather && (
