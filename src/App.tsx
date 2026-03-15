@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace, getLanguageFromCountryCode } from './utils';
-import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, RefreshCw, Network, Compass, BatteryCharging, Battery, Clock } from 'lucide-react';
+import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, VolumeX, RefreshCw, Network, Compass, BatteryCharging, Battery, Clock, Moon, Sun } from 'lucide-react';
 import { FaWindows, FaApple, FaLinux, FaAndroid } from 'react-icons/fa';
 
 function PlatformIcon({ platform }: { platform: string }) {
@@ -37,6 +37,17 @@ function App() {
   const lastWeatherSlot = useRef<number>(-1);
 
   const currentWeatherSlot = () => Math.floor((Math.floor(Date.now() / 1000) - 30) / 900);
+
+  // Theme State
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDarkMode(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   // Time state
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -446,6 +457,13 @@ function App() {
           </div>
           <div className="card-body details-grid">
             <div className="detail-item">
+              <span className="label">OS Theme</span>
+              <span className="value" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {isDarkMode ? <Moon size={16} /> : <Sun size={16} />}
+                {isDarkMode ? 'Dark' : 'Light'}
+              </span>
+            </div>
+            <div className="detail-item">
               <span className="label">Platform</span>
               <span className="value" style={{ display: 'flex', alignItems: 'center' }}><PlatformIcon platform={data.fingerprint.platform} />{data.fingerprint.platform}</span>
             </div>
@@ -715,7 +733,11 @@ function App() {
                       <span className="value truncate">{selectedChannel.title}</span>
                     </div>
                     <div className="volume-control">
-                      <Volume2 className="icon text-secondary" size={20} />
+                      {volume === 0 ? (
+                        <VolumeX className="icon text-secondary" size={20} />
+                      ) : (
+                        <Volume2 className="icon text-secondary" size={20} />
+                      )}
                       <input
                         type="range"
                         min="0"
