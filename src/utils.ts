@@ -23,9 +23,54 @@ function getGPUInfo(): string | null {
   }
 }
 
+async function checkAdBlocker(): Promise<boolean> {
+  const [cosmeticBlocked, surrogateBlocked] = await Promise.all([
+    // 1. CSS cosmetic filter check — double-rAF ensures uBlock's injected CSS has been applied.
+    new Promise<boolean>(resolve => {
+      const el = document.createElement('div');
+      el.className = 'adsbygoogle adsbox pub_300x250';
+      el.style.cssText = 'display:block;position:absolute;left:-9999px;top:-9999px;height:1px;width:1px;';
+      document.body.appendChild(el);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        resolve(el.offsetHeight === 0 || getComputedStyle(el).display === 'none');
+        el.remove();
+      }));
+    }),
+
+    // 2. Surrogate content check — uBlock replaces adsbygoogle.js with a stub whose push()
+    //    contains the literal string 'enable_page_level_ads' (readable surrogate logic).
+    //    The real minified push is a tiny delegation wrapper with no such readable strings.
+    //    'noopfn' is an internal uBlock helper that can never appear in Google's real code.
+    new Promise<boolean>(resolve => {
+      const s = document.createElement('script');
+      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+      const t = setTimeout(() => { s.remove(); resolve(false); }, 3000);
+      s.onerror = () => { clearTimeout(t); s.remove(); resolve(true); };
+      s.onload = () => {
+        clearTimeout(t); s.remove();
+        const adsg = (window as any).adsbygoogle;
+        const pushStr = typeof adsg?.push === 'function'
+          ? adsg.push.toString().replace(/\s+/g, '')
+          : '';
+        resolve(
+          pushStr === 'function(){}' ||                // current uBlock surrogate: empty push
+          pushStr.includes('enable_page_level_ads') || // older surrogate variants
+          pushStr.includes('noopfn')                   // older surrogate variants
+        );
+      };
+      document.head.appendChild(s);
+    }),
+  ]);
+
+  return cosmeticBlocked || surrogateBlocked;
+}
+
 export async function getFingerprint() {
   const nav = window.navigator as any;
   const conn = (navigator as any).connection;
+
+  const adBlocker = await checkAdBlocker();
+
   return {
     gpu: getGPUInfo(),
     userAgent: navigator.userAgent,
@@ -43,6 +88,7 @@ export async function getFingerprint() {
     referrer: document.referrer || null,
     connectionType: conn?.effectiveType || null,
     downlink: conn?.downlink ?? null,
+    adBlocker,
   };
 }
 

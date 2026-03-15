@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace, getLanguageFromCountryCode } from './utils';
-import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, VolumeX, RefreshCw, Network, Compass, BatteryCharging, Battery, Clock, Moon, Sun } from 'lucide-react';
+import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, VolumeX, RefreshCw, Network, Compass, BatteryCharging, Battery, Clock, Moon, Sun, ShieldAlert } from 'lucide-react';
 import { FaWindows, FaApple, FaLinux, FaAndroid } from 'react-icons/fa';
 
 function PlatformIcon({ platform }: { platform: string }) {
@@ -675,6 +675,13 @@ function App() {
                 <span className="value">
                   <span className={`status-dot ${data.fingerprint.online ? 'online' : 'offline'}`}></span>
                   {data.fingerprint.online ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="label">Ad Blocker / Filter</span>
+                <span className="value" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: data.fingerprint.adBlocker ? 'var(--accent-orange)' : 'var(--accent-green)' }}>
+                  {data.fingerprint.adBlocker && <ShieldAlert size={16} />}
+                  {data.fingerprint.adBlocker ? 'Detected (Active)' : 'Not Detected'}
                 </span>
               </div>
               <div className="detail-item">
