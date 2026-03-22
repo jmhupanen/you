@@ -580,23 +580,23 @@ function App() {
                   <div className="compass-container">
                     <div className="compass-ring" style={{ transform: `rotate(${orientation?.alpha ?? 0}deg)` }}>
                       <svg viewBox="0 0 160 160" width="160" height="160">
-                        <circle cx="80" cy="80" r="76" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
+                        <circle cx="80" cy="80" r="76" fill="none" className="compass-outer-ring" strokeWidth="1.5" />
                         {[0, 90, 180, 270].map(deg => {
                           const rad = (deg - 90) * Math.PI / 180;
-                          return <line key={deg} x1={80 + 68 * Math.cos(rad)} y1={80 + 68 * Math.sin(rad)} x2={80 + 76 * Math.cos(rad)} y2={80 + 76 * Math.sin(rad)} stroke="rgba(255,255,255,0.5)" strokeWidth="2" />;
+                          return <line key={deg} x1={80 + 68 * Math.cos(rad)} y1={80 + 68 * Math.sin(rad)} x2={80 + 76 * Math.cos(rad)} y2={80 + 76 * Math.sin(rad)} className="compass-tick-major" strokeWidth="2" />;
                         })}
                         {[45, 135, 225, 315].map(deg => {
                           const rad = (deg - 90) * Math.PI / 180;
-                          return <line key={deg} x1={80 + 71 * Math.cos(rad)} y1={80 + 71 * Math.sin(rad)} x2={80 + 76 * Math.cos(rad)} y2={80 + 76 * Math.sin(rad)} stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />;
+                          return <line key={deg} x1={80 + 71 * Math.cos(rad)} y1={80 + 71 * Math.sin(rad)} x2={80 + 76 * Math.cos(rad)} y2={80 + 76 * Math.sin(rad)} className="compass-tick-minor" strokeWidth="1.5" />;
                         })}
-                        {([['N', 0, '#ef4444'], ['E', 90, 'rgba(255,255,255,0.5)'], ['S', 180, 'rgba(255,255,255,0.5)'], ['W', 270, 'rgba(255,255,255,0.5)']] as [string, number, string][]).map(([label, deg, color]) => {
+                        {([['N', 0, null], ['E', 90, null], ['S', 180, null], ['W', 270, null]] as [string, number, null][]).map(([label, deg]) => {
                           const rad = (deg - 90) * Math.PI / 180;
-                          return <text key={label} x={80 + 56 * Math.cos(rad)} y={80 + 56 * Math.sin(rad)} textAnchor="middle" dominantBaseline="central" fill={color} fontSize="13" fontWeight="700" fontFamily="Inter, sans-serif">{label}</text>;
+                          return <text key={label} x={80 + 56 * Math.cos(rad)} y={80 + 56 * Math.sin(rad)} textAnchor="middle" dominantBaseline="central" className={label === 'N' ? 'compass-cardinal-north' : 'compass-cardinal-minor'} fontSize="13" fontWeight="700" fontFamily="Inter, sans-serif">{label}</text>;
                         })}
                         <g>
                           <polygon points="80,22 74,80 86,80" fill="#ef4444" opacity="0.9" />
-                          <polygon points="80,138 74,80 86,80" fill="rgba(255,255,255,0.2)" opacity="0.9" />
-                          <circle cx="80" cy="80" r="5" fill="rgba(24,24,27,0.9)" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
+                          <polygon points="80,138 74,80 86,80" className="compass-needle-south" opacity="0.9" />
+                          <circle cx="80" cy="80" r="5" className="compass-center" strokeWidth="1" />
                         </g>
                       </svg>
                     </div>

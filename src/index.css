@@ -346,6 +346,15 @@ body {
     flex-wrap: wrap;
 }
 
+/* Compass SVG theming */
+.compass-outer-ring { stroke: rgba(255,255,255,0.12); }
+.compass-tick-major { stroke: rgba(255,255,255,0.5); }
+.compass-tick-minor { stroke: rgba(255,255,255,0.25); }
+.compass-cardinal-north { fill: #ef4444; }
+.compass-cardinal-minor { fill: rgba(255,255,255,0.5); }
+.compass-needle-south { fill: rgba(255,255,255,0.2); }
+.compass-center { fill: rgba(24,24,27,0.9); stroke: rgba(255,255,255,0.35); }
+
 /* Compass */
 .compass-container {
     display: flex;
@@ -930,6 +939,13 @@ body {
     .name-tooltip-trigger::before {
         border-bottom-color: rgba(0, 0, 0, 0.1);
     }
+
+    .compass-outer-ring { stroke: rgba(0,0,0,0.15); }
+    .compass-tick-major { stroke: rgba(0,0,0,0.4); }
+    .compass-tick-minor { stroke: rgba(0,0,0,0.2); }
+    .compass-cardinal-minor { fill: rgba(0,0,0,0.45); }
+    .compass-needle-south { fill: rgba(0,0,0,0.2); }
+    .compass-center { fill: rgba(248,250,252,0.95); stroke: rgba(0,0,0,0.3); }
 
     .level-arena {
         background: rgba(255, 255, 255, 0.35);
