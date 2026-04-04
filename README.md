@@ -8,7 +8,7 @@ A single-page app that reveals what your browser exposes about you — your devi
 - **System Capabilities** — logical CPU cores, device memory, timezone
 - **Browser Footprint** — user agent, language settings, cookie status, network status
 - **Location & Weather** — IP geolocation via GeoJS, current conditions via Open-Meteo (auto-refreshes every minute, manual refresh available)
-- **Local Radio** — streams from the 5 nearest Radio Garden cities, switchable channels with in-page audio player and volume control
+- **Local Radio** — top stations for your country via Radio Browser, sorted by proximity where available, with station favicon, homepage link, in-page audio player and volume control
 - **Localized greeting** — says hello in your country's language and guesses common local names
 
 ## APIs used (all free, no keys required)
@@ -19,7 +19,7 @@ A single-page app that reveals what your browser exposes about you — your devi
 | Weather | [Open-Meteo](https://open-meteo.com) |
 | Local greeting | [multilanguage-hello-json](https://github.com/novellac/multilanguage-hello-json) |
 | Common names | [popular-names-by-country-dataset](https://github.com/sigpwned/popular-names-by-country-dataset) |
-| Radio streams | [Radio Garden](https://radio.garden) via [codetabs CORS proxy](https://codetabs.com) |
+| Radio streams | [Radio Browser](https://www.radio-browser.info) |
 
 ## Development
 

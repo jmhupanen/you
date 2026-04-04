@@ -800,6 +800,31 @@ body {
     overflow: hidden;
 }
 
+.now-playing-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow: hidden;
+}
+
+.station-favicon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.station-homepage-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.station-homepage-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 .volume-control {
     display: flex;
     align-items: center;

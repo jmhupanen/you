@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getClosestPlaces, getChannelsForPlace, getLanguageFromCountryCode } from './utils';
+import { getFingerprint, getLocation, getWeather, getGreeting, getCommonNames, getLocalStations, getLanguageFromCountryCode } from './utils';
 import { Globe, Wind, Thermometer, Monitor, Cpu, MapPin, Loader2, Radio, Play, Pause, Volume2, VolumeX, RefreshCw, Network, Compass, BatteryCharging, Battery, Clock, Moon, Sun, ShieldAlert } from 'lucide-react';
 import { FaWindows, FaApple, FaLinux, FaAndroid } from 'react-icons/fa';
 
@@ -64,9 +64,7 @@ function App() {
   const [orientation, setOrientation] = useState<{ alpha: number; beta: number; gamma: number } | null>(null);
   const [orientationSupport, setOrientationSupport] = useState<'checking' | 'available' | 'needs-permission' | 'denied' | 'unavailable'>('checking');
 
-  // Radio Garden State
-  const [places, setPlaces] = useState<any[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
+  // Radio State
   const [channels, setChannels] = useState<any[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<any | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -180,36 +178,17 @@ function App() {
     };
   }, []);
 
-  // Load nearest radio places when coordinates are found
+  // Load local radio stations when coordinates are found
   useEffect(() => {
-    if (data?.coords?.lat && data?.coords?.lon) {
-      async function loadPlaces() {
-        const closest = await getClosestPlaces(data.coords.lat, data.coords.lon);
-        setPlaces(closest);
-        if (closest.length > 0) {
-          setSelectedPlace(closest[0].id);
-        }
+    if (data?.coords?.lat && data?.coords?.lon && data?.coords?.countryCode) {
+      async function loadStations() {
+        const stations = await getLocalStations(data.coords.countryCode, data.coords.lat, data.coords.lon);
+        setChannels(stations);
+        if (stations.length > 0) setSelectedChannel(stations[0]);
       }
-      loadPlaces();
+      loadStations();
     }
   }, [data?.coords]);
-
-  // Load channels when selected place changes
-  useEffect(() => {
-    if (selectedPlace) {
-      const placeId = selectedPlace;
-      async function loadChans() {
-        const chs = await getChannelsForPlace(placeId);
-        setChannels(chs);
-        if (chs.length > 0) {
-          setSelectedChannel(chs[0]);
-        } else {
-          setSelectedChannel(null);
-        }
-      }
-      loadChans();
-    }
-  }, [selectedPlace]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -706,7 +685,7 @@ function App() {
           </div>
         </section>
 
-        {places.length > 0 && (
+        {channels.length > 0 && (
           <section className="card radio-card stagger-7">
             <div className="card-header">
               <Radio className="icon text-purple" />
@@ -714,35 +693,17 @@ function App() {
             </div>
             <div className="card-body">
               <div className="radio-controls">
-                <div className="radio-header-actions">
-                  <select
-                    className="radio-select"
-                    value={selectedPlace || ''}
-                    onChange={(e) => setSelectedPlace(e.target.value)}
-                  >
-                    {places.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.title}, {p.country} ({Math.round(p.distance)}km)
-                      </option>
-                    ))}
-                  </select>
+                <div className="channel-list">
+                  {channels.map(c => (
+                    <button
+                      key={c.id}
+                      className={`channel-btn ${selectedChannel?.id === c.id ? 'active' : ''}`}
+                      onClick={() => setSelectedChannel(c)}
+                    >
+                      {c.title}
+                    </button>
+                  ))}
                 </div>
-
-                {channels.length > 0 ? (
-                  <div className="channel-list">
-                    {channels.map(c => (
-                      <button
-                        key={c.id}
-                        className={`channel-btn ${selectedChannel?.id === c.id ? 'active' : ''}`}
-                        onClick={() => setSelectedChannel(c)}
-                      >
-                        {c.title}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="no-channels">No channels found for this location.</p>
-                )}
 
                 {selectedChannel && (
                   <div className="player-container">
@@ -751,7 +712,16 @@ function App() {
                     </button>
                     <div className="now-playing">
                       <span className="label">Now Playing</span>
-                      <span className="value truncate">{selectedChannel.title}</span>
+                      <div className="now-playing-title">
+                        {selectedChannel.favicon && (
+                          <img src={selectedChannel.favicon} alt="" className="station-favicon" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        )}
+                        {selectedChannel.homepage ? (
+                          <a href={selectedChannel.homepage} target="_blank" rel="noopener noreferrer" className="value truncate station-homepage-link">{selectedChannel.title}</a>
+                        ) : (
+                          <span className="value truncate">{selectedChannel.title}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="volume-control">
                       {volume === 0 ? (
@@ -775,7 +745,7 @@ function App() {
                 {selectedChannel && (
                   <audio
                     ref={audioRef}
-                    src={`https://radio.garden/api/ara/content/listen/${selectedChannel.id}/channel.mp3`}
+                    src={selectedChannel.streamUrl}
                     onPlay={() => setIsPlaying(true)}
                     onPause={() => setIsPlaying(false)}
                   />

@@ -189,9 +189,8 @@ export async function getCommonNames(countryCode: string) {
   return { maleName, femaleName };
 }
 
-// Helper to calculate distance between two coordinates in kilometers
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -201,57 +200,36 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-export async function getClosestPlaces(lat: number, lon: number, limit = 5) {
+export async function getLocalStations(countryCode: string, lat: number, lon: number, limit = 20) {
   try {
-    const targetUrl = encodeURIComponent('https://radio.garden/api/ara/content/places');
-    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${targetUrl}`);
-    if (!res.ok) throw new Error('Fetch places failed');
-    const data = await res.json();
+    const url = `https://de1.api.radio-browser.info/json/stations/search?countrycode=${countryCode}&limit=40&order=clickcount&reverse=true&hidebroken=true`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'you-app/1.0' } });
+    if (!res.ok) throw new Error('Fetch stations failed');
+    const stations: any[] = await res.json();
 
-    // API returns geo as [longitude, latitude]
-    const placesWithDistance = data.data.list.map((place: any) => ({
-      ...place,
-      distance: haversineDistance(lat, lon, place.geo[1], place.geo[0])
-    }));
+    const withDist = stations.map(s => {
+      const sLat = parseFloat(s.latitude);
+      const sLon = parseFloat(s.longitude);
+      const distance = (!isNaN(sLat) && sLat !== 0 && !isNaN(sLon) && sLon !== 0)
+        ? haversineDistance(lat, lon, sLat, sLon)
+        : Infinity;
+      return { id: s.stationuuid, title: s.name.trim(), streamUrl: s.url_resolved, country: s.country, distance, favicon: s.favicon || '', homepage: s.homepage || '' };
+    });
 
-    placesWithDistance.sort((a: any, b: any) => a.distance - b.distance);
-    return placesWithDistance.slice(0, limit);
+    const seen = new Set<string>();
+    const unique = withDist.filter(s => {
+      const key = s.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const withGeo = unique.filter(s => s.distance !== Infinity).sort((a, b) => a.distance - b.distance);
+    const withoutGeo = unique.filter(s => s.distance === Infinity);
+
+    return [...withGeo, ...withoutGeo].slice(0, limit);
   } catch (err) {
-    console.error("Error fetching Radio Garden places", err);
-    return [];
-  }
-}
-
-export async function getChannelsForPlace(placeId: string) {
-  try {
-    const targetUrl = encodeURIComponent(`https://radio.garden/api/ara/content/page/${placeId}/channels`);
-    const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${targetUrl}`);
-    if (!res.ok) throw new Error('Fetch channels failed');
-    const data = await res.json();
-
-    // Channel data is deeply nested in the response
-    const channels = data?.data?.content?.[0]?.items || [];
-
-    return channels.map((item: any) => {
-      // The Codetabs proxy sometimes nests the actual station data inside a `page` key vs direct flat items.
-      const entry = item.page || item;
-
-      // Ensure we have an href or url string
-      const linkTarget = entry.href || entry.url;
-      if (!linkTarget || typeof linkTarget !== 'string') return null;
-
-      const id = linkTarget.split('/').pop();
-      // Titles from Radio Garden APIs can be polluted with newlines and carriage returns, so strip them down.
-      const title = (entry.title || "Unknown Station").replace(/[\r\n]+/g, '').trim();
-
-      return {
-        id,
-        title,
-        href: linkTarget
-      };
-    }).filter((c: any) => c && c.id);
-  } catch (err) {
-    console.error("Error fetching Radio Garden channels", err);
+    console.error('Error fetching local stations', err);
     return [];
   }
 }
