@@ -410,7 +410,21 @@ function App() {
               else if (hour >= 17 && hour < 22) timeOfDayGreeting = 'Good Evening';
               else timeOfDayGreeting = 'Good Night';
 
-              const isSummerTime = timeZoneName.toLowerCase().includes('summer') || timeZoneName.toLowerCase().includes('daylight');
+              const getOffsetMs = (date: Date, tzId: string) => {
+                const fmt = new Intl.DateTimeFormat('en-US', {
+                  timeZone: tzId,
+                  year: 'numeric', month: '2-digit', day: '2-digit',
+                  hour: '2-digit', minute: '2-digit', second: '2-digit',
+                  hour12: false
+                });
+                const p = Object.fromEntries(fmt.formatToParts(date).map(({ type, value }) => [type, value]));
+                return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - date.getTime();
+              };
+              const year = currentTime.getFullYear();
+              const janOffset = getOffsetMs(new Date(year, 0, 1), tz);
+              const julOffset = getOffsetMs(new Date(year, 6, 1), tz);
+              const nowOffset = getOffsetMs(currentTime, tz);
+              const isSummerTime = janOffset !== julOffset && nowOffset !== Math.min(janOffset, julOffset);
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
